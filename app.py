@@ -1,6 +1,17 @@
 from flask import Flask, jsonify
+import mysql.connector
+import os
 
 app = Flask(__name__)
+
+
+def get_db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_NAME", "hmsci_db")
+    )
 
 
 @app.route("/")
@@ -21,10 +32,33 @@ def health():
 
 @app.route("/appointments")
 def appointments():
-    return jsonify({
-        "module": "Appointments",
-        "status": "Available"
-    })
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, patient_name, doctor_name,
+                   appointment_date, status
+            FROM appointments
+        """)
+
+        appointments_data = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return jsonify({
+            "module": "Appointments",
+            "status": "Available",
+            "data": appointments_data
+        })
+
+    except mysql.connector.Error as error:
+        return jsonify({
+            "module": "Appointments",
+            "status": "Database connection failed",
+            "error": str(error)
+        }), 500
 
 
 @app.route("/opd")
