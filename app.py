@@ -24,10 +24,47 @@ def home():
 
 
 @app.route("/health")
-def health():
+@app.route("/live")
+def liveness():
     return jsonify({
-        "status": "UP"
-    })
+        "status": "UP",
+        "check": "liveness"
+    }), 200
+
+
+@app.route("/ready")
+def readiness():
+    connection = None
+    cursor = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+
+        return jsonify({
+            "status": "READY",
+            "checks": {
+                "database": "UP"
+            }
+        }), 200
+
+    except mysql.connector.Error:
+        return jsonify({
+            "status": "NOT_READY",
+            "checks": {
+                "database": "DOWN"
+            }
+        }), 503
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if connection and connection.is_connected():
+            connection.close()
 
 
 @app.route("/appointments")
