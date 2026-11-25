@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -6,10 +7,21 @@ pipeline {
         ECR_REGISTRY = '327973843771.dkr.ecr.ap-south-2.amazonaws.com'
         ECR_REPOSITORY = 'hmsci-app'
         IMAGE_TAG = 'latest'
-        EC2_HOST = '18.60.153.199'
+        EC2_HOST = '18.61.202.214'
     }
 
     stages {
+
+        stage('Preflight Check') {
+            steps {
+                bat 'where docker'
+                bat 'docker version'
+                bat 'where aws'
+                bat 'aws --version'
+                bat 'where ssh'
+                bat 'ssh -V'
+            }
+        }
 
         stage('Docker Build') {
             steps {
