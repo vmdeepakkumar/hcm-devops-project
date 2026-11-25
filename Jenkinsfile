@@ -1,4 +1,5 @@
 
+
 pipeline {
     agent any
 
@@ -8,6 +9,7 @@ pipeline {
         ECR_REPOSITORY = 'hmsci-app'
         IMAGE_TAG = 'latest'
         EC2_HOST = '18.61.202.214'
+        DOCKER_CONFIG = 'C:\\ProgramData\\Jenkins\\.docker-ecr'
     }
 
     stages {
@@ -29,15 +31,22 @@ pipeline {
             }
         }
 
+        stage('Prepare Docker Credentials') {
+            steps {
+                bat 'if not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"'
+                bat 'aws sts get-caller-identity'
+            }
+        }
+
         stage('ECR Login') {
             steps {
-                bat 'aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_REGISTRY%'
+                bat 'aws ecr get-login-password --region %AWS_REGION% | docker --config "%DOCKER_CONFIG%" login --username AWS --password-stdin %ECR_REGISTRY%'
             }
         }
 
         stage('Push to ECR') {
             steps {
-                bat 'docker push %ECR_REGISTRY%/%ECR_REPOSITORY%:%IMAGE_TAG%'
+                bat 'docker --config "%DOCKER_CONFIG%" push %ECR_REGISTRY%/%ECR_REPOSITORY%:%IMAGE_TAG%'
             }
         }
 
@@ -46,13 +55,13 @@ pipeline {
                 sshagent(['hmsci-ec2']) {
                     bat '''
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "aws ecr get-login-password --region %AWS_REGION% | sudo docker login --username AWS --password-stdin %ECR_REGISTRY%"
-                        
+
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "sudo docker pull %ECR_REGISTRY%/%ECR_REPOSITORY%:%IMAGE_TAG%"
-                        
+
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "sudo docker stop hmsci-container || true"
-                        
+
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "sudo docker rm hmsci-container || true"
-                        
+
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "sudo docker run -d --name hmsci-container -p 5000:5000 %ECR_REGISTRY%/%ECR_REPOSITORY%:%IMAGE_TAG%"
                     '''
                 }
@@ -64,8 +73,8 @@ pipeline {
                 sshagent(['hmsci-ec2']) {
                     bat '''
                         ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "sudo docker ps --filter name=hmsci-container"
-                        
-                        ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "curl -s http://localhost:5000/health"
+
+                        ssh -o StrictHostKeyChecking=no ec2-user@%EC2_HOST% "curl -fsS http://localhost:5000/health"
                     '''
                 }
             }
@@ -73,6 +82,10 @@ pipeline {
     }
 
     post {
+        always {
+            bat 'if exist "%DOCKER_CONFIG%\\config.json" del /f /q "%DOCKER_CONFIG%\\config.json"'
+        }
+
         success {
             echo 'HMSCI CI/CD pipeline completed successfully'
         }
