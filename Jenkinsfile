@@ -10,6 +10,7 @@ pipeline {
         IMAGE_TAG = 'latest'
         EC2_HOST = '18.61.202.214'
         DOCKER_CONFIG = 'C:\\ProgramData\\Jenkins\\.docker-ecr'
+        PATH+ECR = 'C:\\Program Files\\Docker\\Docker\\resources\\bin'
     }
 
     stages {
