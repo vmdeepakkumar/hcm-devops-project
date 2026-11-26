@@ -10,7 +10,6 @@ pipeline {
         IMAGE_TAG = 'latest'
         EC2_HOST = '18.61.202.214'
         DOCKER_CONFIG = 'C:\\ProgramData\\Jenkins\\.docker-ecr'
-        PATH+ECR = 'C:\\Program Files\\Docker\\Docker\\resources\\bin'
     }
 
     stages {
@@ -41,9 +40,11 @@ pipeline {
 
         stage('ECR Login') {
             steps {
-                bat 'aws ecr get-login-password --region %AWS_REGION% | docker --config "%DOCKER_CONFIG%" login --username AWS --password-stdin %ECR_REGISTRY%'
+                withEnv(['PATH+ECR=C:\\Program Files\\Docker\\Docker\\resources\\bin']) {
+                    bat 'aws ecr get-login-password --region %AWS_REGION% | docker --config "%DOCKER_CONFIG%" login --username AWS --password-stdin %ECR_REGISTRY%'
+                }
             }
-        }
+     }
 
         stage('Push to ECR') {
             steps {
