@@ -40,11 +40,9 @@ pipeline {
 
         stage('ECR Login') {
             steps {
-                withEnv(['PATH+ECR=C:\\Program Files\\Docker\\Docker\\resources\\bin']) {
-                    bat 'aws ecr get-login-password --region %AWS_REGION% | docker --config "%DOCKER_CONFIG%" login --username AWS --password-stdin %ECR_REGISTRY%'
-                }
+                bat 'aws sts get-caller-identity'
             }
-     }
+        }
 
         stage('Push to ECR') {
             steps {
